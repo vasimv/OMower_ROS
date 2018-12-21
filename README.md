@@ -41,5 +41,5 @@ rosrun omower_gateway omower_gps_localization.py
 Connect with pfodApp to the OMower on port 8991 and you should get main menu.
 
 
-[[https://github.com/vasimv/OMower_ROS/blob/master/OMower-ROS.jpg|alt=OMower_ROS]]
+[[https://github.com/vasimv/OMower_ROS/blob/master/OMower-ROS.jpg]]
 
