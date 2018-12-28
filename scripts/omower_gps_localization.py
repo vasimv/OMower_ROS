@@ -26,12 +26,15 @@ class GPSLocalization():
 
         rospy.init_node('omower_gps_localization')
         self.br = tf2_ros.TransformBroadcaster()
+        self.sbr = tf2_ros.StaticTransformBroadcaster()
         # Subscribe to OMower's gps and imu topics
         rospy.Subscriber('/gps/coordinates', Int32MultiArray, callback=self.navsatfix_callback, queue_size=1)
         rospy.Subscriber('/imu/orientation', Int16MultiArray, callback=self.imu_callback, queue_size=1)
         # Zero UTM coordinates (set to 0)
-        self.zero_x = np.float64(508940.336601)
-        self.zero_y = np.float64(2036113.3818)
+        self.zero_x = 0
+        self.zero_y = 0
+        self.q_zero = tf_conversions.transformations.quaternion_from_euler(0, 0, 0)
+        self.q_camera = tf_conversions.transformations.quaternion_from_euler(-3.1415926/2, 0, 0)
 
         self.x = 0
         self.y = 0
@@ -39,13 +42,36 @@ class GPSLocalization():
         self.rot_y = 0
         self.rot_z = 0
 
-        self.rate = rospy.Rate(10.0)
+        self.rate = rospy.Rate(50.0)
 
         while not rospy.is_shutdown():
             t = geometry_msgs.msg.TransformStamped()
             t.header.stamp = rospy.Time.now()
-            t.header.frame_id = "map"
-            t.child_frame_id = "OMower"
+            # Map frame
+            t.header.frame_id = 'world'
+            t.child_frame_id = 'map'
+            t.transform.translation.x = 0
+            t.transform.translation.y = 0
+            t.transform.translation.z = 0
+            t.transform.rotation.x = self.q_zero[0]
+            t.transform.rotation.y = self.q_zero[1]
+            t.transform.rotation.z = self.q_zero[2]
+            t.transform.rotation.w = self.q_zero[3]
+            self.sbr.sendTransform(t)
+            # Odom frame
+            t.header.frame_id = 'map'
+            t.child_frame_id = 'odom'
+            t.transform.translation.x = 0
+            t.transform.translation.y = 0
+            t.transform.translation.z = 0
+            t.transform.rotation.x = self.q_zero[0]
+            t.transform.rotation.y = self.q_zero[1]
+            t.transform.rotation.z = self.q_zero[2]
+            t.transform.rotation.w = self.q_zero[3]
+            self.sbr.sendTransform(t)
+            # base_link frame
+            t.header.frame_id = "odom"
+            t.child_frame_id = "base_link"
             t.transform.translation.x = self.x
             t.transform.translation.y = self.y
             t.transform.translation.z = 0;
@@ -55,6 +81,28 @@ class GPSLocalization():
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.br.sendTransform(t)
+            # left camera frame
+            t.header.frame_id = "base_link"
+            t.child_frame_id = "camera/left"
+            t.transform.translation.x = -0.06
+            t.transform.translation.y = 0.325
+            t.transform.translation.z = 0.21
+            t.transform.rotation.x = self.q_camera[0]
+            t.transform.rotation.y = self.q_camera[1]
+            t.transform.rotation.z = self.q_camera[2]
+            t.transform.rotation.w = self.q_camera[3]
+            self.sbr.sendTransform(t)
+            # right camera frame
+            t.header.frame_id = "base_link"
+            t.child_frame_id = "camera/right"
+            t.transform.translation.x = 0.06
+            t.transform.translation.y = 0.325
+            t.transform.translation.z = 0.21
+            t.transform.rotation.x = self.q_camera[0]
+            t.transform.rotation.y = self.q_camera[1]
+            t.transform.rotation.z = self.q_camera[2]
+            t.transform.rotation.w = self.q_camera[3]
+            self.sbr.sendTransform(t)
             self.rate.sleep()
 
         # 1. use geodesy to convert LatLong to point
@@ -74,8 +122,12 @@ class GPSLocalization():
             latitude = np.float64(msg.data[0]) / np.float64(10000000.0)
             longitude = np.float64(msg.data[1]) / np.float64(10000000.0)
             point = geodesy.utm.fromLatLong(latitude, longitude).toPoint()
+            # To simplify things - we take first reading as zero coordinates
+            if (self.zero_x == 0):
+              self.zero_x = np.float64(point.x)
+              self.zero_y = np.float64(point.y)
             self.x = np.float64(point.x) - self.zero_x
-            self.y = np.float64(point.y) - self.zero.y
+            self.y = np.float64(point.y) - self.zero_y
 
 if __name__ == '__main__':
 
