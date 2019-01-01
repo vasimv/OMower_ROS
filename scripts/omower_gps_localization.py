@@ -47,7 +47,7 @@ class GPSLocalization():
         while not rospy.is_shutdown():
             t = geometry_msgs.msg.TransformStamped()
             t.header.stamp = rospy.Time.now()
-            # Map frame
+            # Map frame (static at 0)
             t.header.frame_id = 'world'
             t.child_frame_id = 'map'
             t.transform.translation.x = 0
@@ -58,7 +58,7 @@ class GPSLocalization():
             t.transform.rotation.z = self.q_zero[2]
             t.transform.rotation.w = self.q_zero[3]
             self.sbr.sendTransform(t)
-            # Odom frame
+            # Odom frame (static at 0)
             t.header.frame_id = 'map'
             t.child_frame_id = 'odom'
             t.transform.translation.x = 0
@@ -69,9 +69,9 @@ class GPSLocalization():
             t.transform.rotation.z = self.q_zero[2]
             t.transform.rotation.w = self.q_zero[3]
             self.sbr.sendTransform(t)
-            # base_link frame
+            # base_footprint frame (GPS coordinates)
             t.header.frame_id = "odom"
-            t.child_frame_id = "base_link"
+            t.child_frame_id = "base_footprint"
             t.transform.translation.x = self.x
             t.transform.translation.y = self.y
             t.transform.translation.z = 0;
@@ -81,7 +81,18 @@ class GPSLocalization():
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.br.sendTransform(t)
-            # left camera frame
+            # base link frame (static)
+            t.header.frame_id = 'base_footprint'
+            t.child_frame_id = 'base_link'
+            t.transform.translation.x = 0
+            t.transform.translation.y = 0
+            t.transform.translation.z = 0
+            t.transform.rotation.x = self.q_zero[0]
+            t.transform.rotation.y = self.q_zero[1]
+            t.transform.rotation.z = self.q_zero[2]
+            t.transform.rotation.w = self.q_zero[3]
+            self.sbr.sendTransform(t)
+            # left camera frame (static)
             t.header.frame_id = "base_link"
             t.child_frame_id = "camera/left"
             t.transform.translation.x = -0.06
@@ -92,7 +103,7 @@ class GPSLocalization():
             t.transform.rotation.z = self.q_camera[2]
             t.transform.rotation.w = self.q_camera[3]
             self.sbr.sendTransform(t)
-            # right camera frame
+            # right camera frame (static)
             t.header.frame_id = "base_link"
             t.child_frame_id = "camera/right"
             t.transform.translation.x = 0.06
@@ -110,7 +121,7 @@ class GPSLocalization():
         # 3. send that transformation
     def imu_callback(self, msg):
         self.rot_x = (-msg.data[0] * 3.1415926) / 180.0
-        self.rot_y = (-msg.data[1] * 3.1415926) / 180.0
+        self.rot_y = (msg.data[1] * 3.1415926) / 180.0
         self.rot_z = (-msg.data[2] * 3.1415926) / 180.0
 
     def navsatfix_callback(self, msg):
@@ -126,6 +137,7 @@ class GPSLocalization():
             if (self.zero_x == 0):
               self.zero_x = np.float64(point.x)
               self.zero_y = np.float64(point.y)
+              print "Using coordinates %f %f as zero" % (self.zero_x, self.zero_y)
             self.x = np.float64(point.x) - self.zero_x
             self.y = np.float64(point.y) - self.zero_y
 
