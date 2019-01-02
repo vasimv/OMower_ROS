@@ -75,23 +75,23 @@ class GPSLocalization():
             t.transform.translation.x = self.x
             t.transform.translation.y = self.y
             t.transform.translation.z = 0;
+            t.transform.rotation.x = self.q_zero[0]
+            t.transform.rotation.y = self.q_zero[1]
+            t.transform.rotation.z = self.q_zero[2]
+            t.transform.rotation.w = self.q_zero[3]
+            self.br.sendTransform(t)
+            # base link frame (base_footprint with vector)
+            t.header.frame_id = 'base_footprint'
+            t.child_frame_id = 'base_link'
+            t.transform.translation.x = 0
+            t.transform.translation.y = 0
+            t.transform.translation.z = 0
             q = tf_conversions.transformations.quaternion_from_euler(self.rot_x, self.rot_y, self.rot_z)
             t.transform.rotation.x = q[0]
             t.transform.rotation.y = q[1]
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.br.sendTransform(t)
-            # base link frame (static)
-            t.header.frame_id = 'base_footprint'
-            t.child_frame_id = 'base_link'
-            t.transform.translation.x = 0
-            t.transform.translation.y = 0
-            t.transform.translation.z = 0
-            t.transform.rotation.x = self.q_zero[0]
-            t.transform.rotation.y = self.q_zero[1]
-            t.transform.rotation.z = self.q_zero[2]
-            t.transform.rotation.w = self.q_zero[3]
-            self.sbr.sendTransform(t)
             # left camera frame (static)
             t.header.frame_id = "base_link"
             t.child_frame_id = "camera/left"
