@@ -681,26 +681,69 @@ void sendIncoming() {
     outIncoming.remove(res);
 }
 
+// Convert string to number with 7 digits precision
+int32_t convTo7(char *s) {
+  int64_t v;
+
+  v = atol(s);
+  switch (strlen(s)) {
+    case 1:
+      v *= 1000000;
+      break;
+    case 2:
+      v *= 100000;
+      break;
+    case 3:
+      v *= 10000;
+      break;
+    case 4:
+      v *= 1000;
+      break;
+    case 5:
+      v *= 100;
+      break;
+    case 6:
+      v *= 10;
+      break;
+    case 8:
+      v /= 10;
+      break;
+    case 9:
+      v /= 100;
+      break;
+    default:
+      break;
+  }
+  return (int32_t) v;
+}
+
 // Parse RTK message
 void parseRtk() {
   int32_t lat, lon;
   int32_t a_lat, a_lon, b_lat, b_lon;
+  char *sb_lat;
+  char *sb_lon;
   int fix, numsats;
   int year, month, mday, hour, minute, second;
   int res;
   uint16_t crc;
 
-  res = sscanf((char *) rtkIn.buf, "%d/%d/%d %d:%d:%d.%*d %d.%d %d.%d %*f %d %d %*f %*f %*f %*f %*f %*f %*f %*f", &year, &month, &mday, &hour, &minute, &second, &a_lat, &b_lat, &a_lon, &b_lon, &fix, &numsats);
+  res = sscanf((char *) rtkIn.buf, "%d/%d/%d %d:%d:%d.%*d %d.%ms %d.%ms %*f %d %d %*f %*f %*f %*f %*f %*f %*f %*f", &year, &month, &mday, &hour, &minute, &second, &a_lat, &sb_lat, &a_lon, &sb_lon, &fix, &numsats);
   if (res != 12)
     return;
+  // Convert after dot numbers
+  b_lat = convTo7(sb_lat);
+  free(sb_lat);
+  b_lon = convTo7(sb_lon);
+  free(sb_lon);
   if (a_lat < 0)
-    lat = a_lat * 10000000 - b_lat / 100;
+    lat = a_lat * 10000000 - b_lat;
   else
-    lat = a_lat * 10000000 + b_lat / 100;
+    lat = a_lat * 10000000 + b_lat;
   if (a_lon < 0)
-    lon = a_lon * 10000000 - b_lon / 100;
+    lon = a_lon * 10000000 - b_lon;
   else
-    lon = a_lon * 10000000 + b_lon / 100;
+    lon = a_lon * 10000000 + b_lon;
   if (fix == 1)
     numsats += 128;
   fprintf(stderr, "coord received: %d %d (%d %d), (%d-%d-%d %d:%d:%d)\n", lat, lon, fix, numsats, year, month, mday, hour, minute, second);
