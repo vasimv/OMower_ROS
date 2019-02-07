@@ -38,8 +38,6 @@ age = 0
 nFrames = 0
 # Time to recognize chessboard
 timeRecognize = 0
-# Resolution, 640x480, 480x320 and 320x240 are supported
-cameraResolution = (640, 480)
 from sensor_msgs.msg import CompressedImage
 
 def millis():
@@ -57,10 +55,14 @@ def callback(ros_data):
   global cameraRotation
   global pubCmd
 
-  resolution = cameraResolution
   timeMark = millis()
   np_arr = np.fromstring(ros_data.data, np.uint8)
   img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+  picHeight, picWidth = img.shape[:2]
+  # Split stereo camera image if needed (use left one)
+  if (picWidth / picHeight) >= 3:
+    img = img[0:picHeight, 0:(picWidth / 2)]
+    picWidth = picWidth / 2
   # Find the chess board corners with OpenCV
   ret, corners = cv2.findChessboardCorners(img, (4,3), flags=cv2.CALIB_CB_NORMALIZE_IMAGE)
   if debug:
@@ -84,7 +86,7 @@ def callback(ros_data):
     avgWidth = (sizeX + sizeX2) / 2
     ratioXY = avgHeight / avgWidth
 
-    angle1 = (resolution[0] - center) / 7.5
+    angle1 = (picWidth - center) / 7.5
     # Calculate chessboard orientation
     if ratioXY < 1.5:
       angle2 = 0
@@ -100,15 +102,18 @@ def callback(ros_data):
         angle2 = -angle2
 
     # Distance calculation for RPI camera v2 module and chessboard with square size 47x47mm
-    if resolution[0] == 640:
+    if (picWidth == 1280):
+      dist = 10680 / avgHeight
+      angle1 = (picWidth / 2 - center) / 10.68
+    elif (picWidth == 640) or (picWidth == 672):
       dist = 5340 / avgHeight
-      angle1 = (resolution[0] / 2 - center) / 5.34
-    elif resolution[0] == 480:
+      angle1 = (picWidth / 2 - center) / 5.34
+    elif picWidth == 480:
       dist = 3560 / avgHeight
-      angle1 = (resolution[0] / 2 - center) / 5.34
+      angle1 = (picWidth / 2 - center) / 3.56
     else:
       dist = 2670 / avgHeight
-      angle1 = (resolution[0] / 2 - center) / 2.67
+      angle1 = (picWidth / 2 - center) / 2.67
 
     if debug:
       print "sizeX, sizeY %f %f" % (sizeX, sizeY)
