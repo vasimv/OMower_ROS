@@ -25,6 +25,7 @@ using namespace std;
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/UInt8MultiArray.h"
+#include "std_msgs/Int32MultiArray.h"
 
 #define USE_RTK
 
@@ -52,6 +53,7 @@ FILE *flog;
 ros::Subscriber subCmdOut;
 ros::Subscriber subDebug;
 ros::Publisher pubCmdIn;
+ros::Publisher pubGps;
 
 class buffer {
   public:
@@ -749,6 +751,20 @@ void parseRtk() {
   fprintf(stderr, "coord received: %d %d (%d %d), (%d-%d-%d %d:%d:%d)\n", lat, lon, fix, numsats, year, month, mday, hour, minute, second);
   countRtk++;
 
+  // Publish coordinates to gps_rtk/coordinates topic
+  std::vector<int32_t> gpsData = {lat, lon, numsats};
+  std_msgs::Int32MultiArray msg;
+
+  msg.data.clear();
+  msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+  msg.layout.dim[0].label = "";
+  msg.layout.dim[0].stride = 1;
+  msg.layout.dim[0].size = 3;
+  msg.layout.data_offset = 0;
+  msg.data = gpsData;
+  pubGps.publish(msg);
+
+
 #ifdef RTK_USE_MODBUS
   // Create packet to set GPS coordinates on OMower
   outRtk.clear();
@@ -954,6 +970,7 @@ int main(int argc, char **argv) {
   subCmdOut = nh.subscribe("cmdOut", 1000, cbCmdOut);
   subDebug = nh.subscribe("debug", 1000, cbDebug);
   pubCmdIn = nh.advertise<std_msgs::UInt8MultiArray>("cmdIn", 1000);
+  pubGps = nh.advertise<std_msgs::Int32MultiArray>("gps_rtk/coordinates", 1000);
 
   gettimeofday(&startTime, NULL); 
   gettimeofday(&lastSentModbus, NULL);
